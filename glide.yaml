@@ -1,0 +1,4 @@
+package: github.com/joefitzgerald/openair
+import:
+- package: github.com/kelseyhightower/envconfig
+  version: ^1.2.0
