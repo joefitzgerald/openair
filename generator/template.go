@@ -41,14 +41,20 @@ func cleanname(name string) string {
 	if strings.HasSuffix(name, "Url") {
 		name = strings.TrimSuffix(name, "Url") + "URL"
 	}
+	if strings.HasSuffix(name, "url") {
+		name = strings.TrimSuffix(name, "url") + "URL"
+	}
 	if strings.HasSuffix(name, "Api") {
 		name = strings.TrimSuffix(name, "Api") + "API"
+	}
+	if strings.HasSuffix(name, "api") {
+		name = strings.TrimSuffix(name, "api") + "API"
 	}
 	if strings.HasPrefix(name, "Api") {
 		name = "API" + strings.TrimPrefix(name, "Api")
 	}
-	if strings.HasSuffix(name, "__c") {
-		name = strings.TrimSuffix(name, "__c") + "C"
+	if strings.HasPrefix(name, "Url") {
+		name = "URL" + strings.TrimPrefix(name, "Url")
 	}
 
 	return strings.Title(name)
@@ -57,10 +63,10 @@ func cleanname(name string) string {
 func tag(tagname string, t string) string {
 	xmlname := tagname
 	jsonname := tagname
-	if t == Address {
+	if strings.ToLower(t) == strings.ToLower(Address) {
 		xmlname = tagname + ">" + Address
 	}
-	if t == Date {
+	if strings.ToLower(t) == strings.ToLower(Date) {
 		xmlname = tagname + ">" + Date
 	}
 	return "`xml:\"" + xmlname + ",omitempty\" json:\"" + jsonname + ",omitempty\"`"
