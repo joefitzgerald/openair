@@ -158,10 +158,10 @@ func (o *{{cleannamelower .TypeName}}) List() []{{cleanname .TypeName}} {
 	}
 	req.Header.Add("content-type", "application/xml")
 	res, err := http.DefaultClient.Do(req)
-	defer res.Body.Close()
 	if err != nil {
 		panic(err)
 	}
+	defer res.Body.Close()
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		panic(err)
