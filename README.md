@@ -4,6 +4,8 @@ Use `go generate` to generate an API for the [OpenAir XML API](https://www.opena
 
 ### Usage
 
+**Note:** This project requires Go 1.8 or later to build.
+
 * `go get -u github.com/joefitzgerald/openair`
 * Create `definition.go` in a package that you wish to have generated files in, with the following content:
 ```
