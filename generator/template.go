@@ -106,10 +106,9 @@ var generatedTmpl = template.Must(template.New("generated").Funcs(template.FuncM
 package {{.PackageName}}
 
 import (
+	"context"
 	"encoding/xml"
 	"fmt"
-	"io/ioutil"
-	"log"
 	"net/http"
 	"strings"
 )
@@ -137,7 +136,7 @@ type {{cleannamelower .TypeName}} struct {
 	config *Config
 }
 
-func (o *{{cleannamelower .TypeName}}) List() []{{cleanname .TypeName}} {
+func (o *{{cleannamelower .TypeName}}) List(ctx context.Context) ([]{{cleanname .TypeName}}, error) {
 	url := fmt.Sprintf("%s://%s/api.pl", o.config.Scheme, o.config.Domain)
 	tmpl := {{backtick}}<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
   <request API_version="1.0" client_ver="1.1"
@@ -154,22 +153,20 @@ func (o *{{cleannamelower .TypeName}}) List() []{{cleanname .TypeName}} {
 	payload := strings.NewReader(fmt.Sprintf(tmpl, o.config.Namespace, o.config.Key, o.config.Company, o.config.User, o.config.Password))
 	req, err := http.NewRequest(http.MethodPost, url, payload)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
+	req = req.WithContext(ctx)
 	req.Header.Add("content-type", "application/xml")
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	defer res.Body.Close()
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		panic(err)
-	}
-
 	var r {{cleanname .TypeName}}Response
-	xml.Unmarshal(body, &r)
-	return r.Read.{{cleanname .TypeName}}s
+	if err := xml.NewDecoder(res.Body).Decode(&r); err != nil {
+		return nil, err
+	}
+	return r.Read.{{cleanname .TypeName}}s, nil
 }
 `))
 
