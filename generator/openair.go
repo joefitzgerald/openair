@@ -15,6 +15,7 @@ import (
 	"log"
 	"net/http"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -98,10 +99,10 @@ func fetchFromOpenAir(datatype string) ([]byte, error) {
 	}
 	req.Header.Add("content-type", "application/xml")
 	res, err := http.DefaultClient.Do(req)
-	defer res.Body.Close()
 	if err != nil {
 		return nil, err
 	}
+	defer res.Body.Close()
 	return ioutil.ReadAll(res.Body)
 }
 
@@ -140,12 +141,17 @@ func buildFields(obj string) []field {
 			}
 		}
 	}
-
+	sort.Slice(fields, func(i, j int) bool {
+		return strings.Compare(fields[i].FieldName, fields[j].FieldName) == -1
+	})
 	return fields
 }
 
 func (g *generator) GenerateModelFiles() {
 	datatypes := strings.Split(g.objectNames, ",")
+	sort.Slice(datatypes, func(i int, j int) bool {
+		return strings.Compare(datatypes[i], datatypes[j]) == -1
+	})
 	for _, datatype := range datatypes {
 		name := cleanname(datatype)
 		fields := buildFields(datatype)
@@ -182,6 +188,9 @@ func (g *generator) GenerateModelFiles() {
 func (g *generator) GenerateCommonFile() {
 	var buf bytes.Buffer
 	datatypes := strings.Split(g.objectNames, ",")
+	sort.Slice(datatypes, func(i, j int) bool {
+		return strings.Compare(datatypes[i], datatypes[j]) == -1
+	})
 	var context = struct {
 		PackageName string
 		Types       []string
