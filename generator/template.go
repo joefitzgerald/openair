@@ -115,8 +115,8 @@ import (
 
 // {{cleanname .TypeName}} is the {{.TypeName}} OpenAir XML Datatype
 type {{cleanname .TypeName}} struct {
-  {{range .Fields}}{{cleanname .FieldName}} {{.FieldType}} {{tag .RawName .FieldType}}
-  {{end}}
+	{{range .Fields}}{{cleanname .FieldName}} {{.FieldType}} {{tag .RawName .FieldType}}
+	{{end}}
 }
 
 // {{cleanname .TypeName}}Response is a container for Auth and Read requests
@@ -136,21 +136,24 @@ type {{cleannamelower .TypeName}} struct {
 	config *Config
 }
 
-func (o *{{cleannamelower .TypeName}}) List(ctx context.Context) ([]{{cleanname .TypeName}}, error) {
+func (o *{{cleannamelower .TypeName}}) List(ctx context.Context, limit string) ([]{{cleanname .TypeName}}, error) {
 	url := fmt.Sprintf("%s://%s/api.pl", o.config.Scheme, o.config.Domain)
 	tmpl := {{backtick}}<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-  <request API_version="1.0" client_ver="1.1"
-  namespace="%s" key="%s">
-    <Auth>
-      <Login>
-        <company>%s</company>
-        <user>%s</user>
-        <password>%s</password>
-      </Login>
-    </Auth>
-    <Read type="{{.TypeName}}" method="all" limit="1000" enable_custom="1" include_nondeleted="1" deleted="1" />
-  </request>{{backtick}}
-	payload := strings.NewReader(fmt.Sprintf(tmpl, o.config.Namespace, o.config.Key, o.config.Company, o.config.User, o.config.Password))
+	if limit == "" {
+		limit = "1000"
+	}
+	<request API_version="1.0" client_ver="1.1"
+	namespace="%s" key="%s">
+		<Auth>
+			<Login>
+				<company>%s</company>
+				<user>%s</user>
+				<password>%s</password>
+			</Login>
+		</Auth>
+		<Read type="{{.TypeName}}" method="all" limit="%s" enable_custom="1" include_nondeleted="1" deleted="1" />
+	</request>{{backtick}}
+	payload := strings.NewReader(fmt.Sprintf(tmpl, o.config.Namespace, o.config.Key, o.config.Company, o.config.User, o.config.Password, limit))
 	req, err := http.NewRequest(http.MethodPost, url, payload)
 	if err != nil {
 		return nil, err
@@ -217,8 +220,8 @@ func New() (*API, error) {
 // NewWithConfig creates a new OpenAir API with the provided Config
 func NewWithConfig(c *Config) *API {
 	api := &API{
-		config: c,
-		{{range $idx, $value := .Types}}{{cleanname $value}}: &{{cleannamelower $value}}{ config: c, },
+	config: c,
+	{{range $idx, $value := .Types}}{{cleanname $value}}: &{{cleannamelower $value}}{ config: c, },
 	{{end}}
 	}
 
