@@ -138,10 +138,10 @@ type {{cleannamelower .TypeName}} struct {
 
 func (o *{{cleannamelower .TypeName}}) List(ctx context.Context, limit string) ([]{{cleanname .TypeName}}, error) {
 	url := fmt.Sprintf("%s://%s/api.pl", o.config.Scheme, o.config.Domain)
-	tmpl := {{backtick}}<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 	if limit == "" {
 		limit = "1000"
 	}
+	tmpl := {{backtick}}<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 	<request API_version="1.0" client_ver="1.1"
 	namespace="%s" key="%s">
 		<Auth>
