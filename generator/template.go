@@ -109,6 +109,7 @@ import (
 	"context"
 	"encoding/xml"
 	"fmt"
+	"time"
 	"net/http"
 	"strings"
 )
@@ -136,21 +137,35 @@ type {{cleannamelower .TypeName}} struct {
 	config *Config
 }
 
-func (o *{{cleannamelower .TypeName}}) list(ctx context.Context, limit int, offset int) ([]{{cleanname .TypeName}}, error) {
+func (o *{{cleannamelower .TypeName}}) list(ctx context.Context, limit int, offset int, modifiedSince *time.Time) ([]{{cleanname .TypeName}}, error) {
 	url := fmt.Sprintf("%s://%s/api.pl", o.config.Scheme, o.config.Domain)
+
+	filterAttributes := ""
+	filterBody := ""
+
+	if modifiedSince != nil {
+		filterAttributes = "filter=\"newer-than\" field=\"date\""
+		filterBody = fmt.Sprintf({{backtick}}<Date>
+			<year>%d</year>
+			<month>%d</month>
+			<day>%d</day>
+		</Date>{{backtick}}, modifiedSince.Year(), modifiedSince.Month(), modifiedSince.Day())
+	}
+
 	tmpl := {{backtick}}<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-	<request API_version="1.0" client_ver="1.1"
-	namespace="%s" key="%s">
-		<Auth>
-			<Login>
-				<company>%s</company>
-				<user>%s</user>
-				<password>%s</password>
-			</Login>
-		</Auth>
-		<Read type="{{.TypeName}}" method="all" limit="%d,%d" enable_custom="1" include_nondeleted="1" deleted="1" />
-	</request>{{backtick}}
-	payload := strings.NewReader(fmt.Sprintf(tmpl, o.config.Namespace, o.config.Key, o.config.Company, o.config.User, o.config.Password, offset, limit))
+		<request API_version="1.0" client_ver="1.1" namespace="%s" key="%s">
+			<Auth>
+				<Login>
+					<company>%s</company>
+					<user>%s</user>
+					<password>%s</password>
+				</Login>
+			</Auth>
+			<Read type="{{.TypeName}}" method="all" limit="%d,%d" enable_custom="1" include_nondeleted="1" deleted="1" %s>%s</Read>
+		</request>{{backtick}}
+
+	payload := strings.NewReader(fmt.Sprintf(tmpl, o.config.Namespace, o.config.Key, o.config.Company, o.config.User, o.config.Password, offset, limit, filterAttributes, filterBody))
+
 	req, err := http.NewRequest(http.MethodPost, url, payload)
 	if err != nil {
 		return nil, err
@@ -169,7 +184,7 @@ func (o *{{cleannamelower .TypeName}}) list(ctx context.Context, limit int, offs
 	return r.Read.{{cleanname .TypeName}}s, nil
 }
 
-func (o *{{cleannamelower .TypeName}}) ListAsync(ctx context.Context) (<-chan []{{cleanname .TypeName}}, <-chan error) {
+func (o *{{cleannamelower .TypeName}}) ListAsync(ctx context.Context, modifiedSince *time.Time) (<-chan []{{cleanname .TypeName}}, <-chan error) {
 	result := make(chan []{{cleanname .TypeName}})
 	errs := make(chan error, 1)
 
@@ -178,7 +193,7 @@ func (o *{{cleannamelower .TypeName}}) ListAsync(ctx context.Context) (<-chan []
 	go func() {
 		offset := 0
 		for {
-			batch, err := o.list(ctx, limit, offset)
+			batch, err := o.list(ctx, limit, offset, modifiedSince)
 			if err != nil {
 				errs <- err
 				break
