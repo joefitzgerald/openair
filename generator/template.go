@@ -136,11 +136,8 @@ type {{cleannamelower .TypeName}} struct {
 	config *Config
 }
 
-func (o *{{cleannamelower .TypeName}}) List(ctx context.Context, limit string) ([]{{cleanname .TypeName}}, error) {
+func (o *{{cleannamelower .TypeName}}) list(ctx context.Context, limit int, offset int) ([]{{cleanname .TypeName}}, error) {
 	url := fmt.Sprintf("%s://%s/api.pl", o.config.Scheme, o.config.Domain)
-	if limit == "" {
-		limit = "1000"
-	}
 	tmpl := {{backtick}}<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 	<request API_version="1.0" client_ver="1.1"
 	namespace="%s" key="%s">
@@ -151,9 +148,9 @@ func (o *{{cleannamelower .TypeName}}) List(ctx context.Context, limit string) (
 				<password>%s</password>
 			</Login>
 		</Auth>
-		<Read type="{{.TypeName}}" method="all" limit="%s" enable_custom="1" include_nondeleted="1" deleted="1" />
+		<Read type="{{.TypeName}}" method="all" limit="%d,%d" enable_custom="1" include_nondeleted="1" deleted="1" />
 	</request>{{backtick}}
-	payload := strings.NewReader(fmt.Sprintf(tmpl, o.config.Namespace, o.config.Key, o.config.Company, o.config.User, o.config.Password, limit))
+	payload := strings.NewReader(fmt.Sprintf(tmpl, o.config.Namespace, o.config.Key, o.config.Company, o.config.User, o.config.Password, offset, limit))
 	req, err := http.NewRequest(http.MethodPost, url, payload)
 	if err != nil {
 		return nil, err
@@ -171,6 +168,34 @@ func (o *{{cleannamelower .TypeName}}) List(ctx context.Context, limit string) (
 	}
 	return r.Read.{{cleanname .TypeName}}s, nil
 }
+
+func (o *{{cleannamelower .TypeName}}) ListAsync(ctx context.Context) (<-chan []{{cleanname .TypeName}}, <-chan error) {
+	result := make(chan []{{cleanname .TypeName}})
+	errs := make(chan error, 1)
+
+	limit := 1000
+
+	go func() {
+		offset := 0
+		for {
+			batch, err := o.list(ctx, limit, offset)
+			if err != nil {
+				errs <- err
+				break
+			}
+			result <- batch
+			if len(batch) < limit {
+				break
+			}
+			offset += limit
+		}
+		close(result)
+		close(errs)
+	}()
+
+	return result, errs
+}
+
 `))
 
 var commonTmpl = template.Must(template.New("common").Funcs(template.FuncMap{
