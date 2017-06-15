@@ -184,6 +184,22 @@ func (o *{{cleannamelower .TypeName}}) list(ctx context.Context, limit int, offs
 	return r.Read.{{cleanname .TypeName}}s, nil
 }
 
+func (o *{{cleannamelower .TypeName}}) listWithRetry(ctx context.Context, limit int, offset int, modifiedSince *time.Time) ([]{{cleanname .TypeName}}, error) {
+	wait := time.Duration(o.config.RetryDelay) * time.Millisecond
+	attempt := 1
+	batch, err := o.list(ctx, limit, offset, modifiedSince)
+	for err != nil {
+		if attempt == 8 {
+			return nil, err
+		}
+		time.Sleep(wait)
+		wait *= 2
+		attempt += 1
+		batch, err = o.list(ctx, limit, offset, modifiedSince)
+	}
+	return batch, nil
+}
+
 func (o *{{cleannamelower .TypeName}}) ListAsync(ctx context.Context, modifiedSince *time.Time) (<-chan []{{cleanname .TypeName}}, <-chan error) {
 	result := make(chan []{{cleanname .TypeName}})
 	errs := make(chan error, 1)
@@ -193,7 +209,7 @@ func (o *{{cleannamelower .TypeName}}) ListAsync(ctx context.Context, modifiedSi
 	go func() {
 		offset := 0
 		for {
-			batch, err := o.list(ctx, limit, offset, modifiedSince)
+			batch, err := o.listWithRetry(ctx, limit, offset, modifiedSince)
 			if err != nil {
 				errs <- err
 				break
@@ -237,13 +253,14 @@ type API struct {
 
 // Config is OpenAir configuration
 type Config struct {
-	Scheme    string {{backtick}}default:"https"{{backtick}}
-	Domain    string {{backtick}}default:"sandbox.openair.com"{{backtick}}
-	Key       string {{backtick}}required:"true"{{backtick}}
-	Namespace string {{backtick}}default:"default"{{backtick}}
-	Company   string {{backtick}}required:"true"{{backtick}}
-	User      string {{backtick}}required:"true"{{backtick}}
-	Password  string {{backtick}}required:"true"{{backtick}}
+	Scheme     string {{backtick}}default:"https"{{backtick}}
+	Domain     string {{backtick}}default:"sandbox.openair.com"{{backtick}}
+	Key        string {{backtick}}required:"true"{{backtick}}
+	Namespace  string {{backtick}}default:"default"{{backtick}}
+	Company    string {{backtick}}required:"true"{{backtick}}
+	User       string {{backtick}}required:"true"{{backtick}}
+	Password   string {{backtick}}required:"true"{{backtick}}
+	RetryDelay int    {{backtick}}default:"100"{{backtick}}
 }
 
 // New creates a new OpenAir API, making use of the environment to generate a Config
