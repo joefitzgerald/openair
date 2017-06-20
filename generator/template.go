@@ -108,6 +108,7 @@ package {{.PackageName}}
 import (
 	"context"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"time"
 	"net/http"
@@ -181,6 +182,9 @@ func (o *{{cleannamelower .TypeName}}) list(ctx context.Context, limit int, offs
 	if err := xml.NewDecoder(res.Body).Decode(&r); err != nil {
 		return nil, err
 	}
+	if r.Auth.Status != "0" {
+		return nil, errors.New("unauthorized")
+	}
 	return r.Read.{{cleanname .TypeName}}s, nil
 }
 
@@ -188,6 +192,9 @@ func (o *{{cleannamelower .TypeName}}) listWithRetry(ctx context.Context, limit 
 	wait := time.Duration(o.config.RetryDelay) * time.Millisecond
 	attempt := 1
 	batch, err := o.list(ctx, limit, offset, modifiedSince)
+	if err != nil && err.Error() == "unauthorized" {
+		return nil, err
+	}
 	for err != nil {
 		if attempt == 8 {
 			return nil, err
