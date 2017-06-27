@@ -37,5 +37,6 @@ func main() {
 	g := generator.New(c, *objectNames, dir, *outputPrefix, *outputSuffix)
 
 	g.GenerateCommonFile()
+	g.GenerateCommonTestFile()
 	g.GenerateModelFiles()
 }

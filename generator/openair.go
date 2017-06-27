@@ -51,6 +51,7 @@ type generator struct {
 // OpenAirGenerator generates an API client for the OpenAir XML API
 type OpenAirGenerator interface {
 	GenerateCommonFile()
+	GenerateCommonTestFile()
 	GenerateModelFiles()
 }
 
@@ -211,6 +212,38 @@ func (g *generator) GenerateCommonFile() {
 	}
 
 	output := strings.ToLower(g.outputPrefix + "common" + g.outputSuffix + ".go")
+	outputPath := filepath.Join(g.dir, output)
+	if err := ioutil.WriteFile(outputPath, src, 0644); err != nil {
+		log.Fatalf("writing output: %s", err)
+	}
+}
+
+func (g *generator) GenerateCommonTestFile() {
+	var buf bytes.Buffer
+	datatypes := strings.Split(g.objectNames, ",")
+	sort.Slice(datatypes, func(i, j int) bool {
+		return strings.Compare(datatypes[i], datatypes[j]) == -1
+	})
+	var context = struct {
+		PackageName string
+		Types       []string
+	}{
+		PackageName: g.pkg,
+		Types:       datatypes,
+	}
+
+	if err := commonTestTmpl.Execute(&buf, context); err != nil {
+		log.Fatalf("generating code: %v", err)
+	}
+
+	src, err := format.Source(buf.Bytes())
+	if err != nil {
+		log.Printf("warning: internal error: invalid Go generated: %s", err)
+		log.Printf("warning: compile the package to analyze the error")
+		src = buf.Bytes()
+	}
+
+	output := strings.ToLower(g.outputPrefix + "common" + g.outputSuffix + "_test.go")
 	outputPath := filepath.Join(g.dir, output)
 	if err := ioutil.WriteFile(outputPath, src, 0644); err != nil {
 		log.Fatalf("writing output: %s", err)
