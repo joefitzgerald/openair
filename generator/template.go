@@ -131,7 +131,7 @@ type {{cleanname .TypeName}}Response struct {
 // {{cleanname .TypeName}}Read is a container for {{cleanname .TypeName}}
 type {{cleanname .TypeName}}Read struct {
 	Status    string     {{xmltag "status,attr"}}
-	{{cleanname .TypeName}}s []{{cleanname .TypeName}} {{xmlrawtag .TypeName}}
+	{{cleanname .TypeName}}s []{{cleanname .TypeName}} {{xmlrawtag .RawTypeName}}
 }
 
 type {{cleannamelower .TypeName}} struct {

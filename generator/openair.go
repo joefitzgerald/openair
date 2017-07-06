@@ -159,10 +159,12 @@ func (g *generator) GenerateModelFiles() {
 		var context = struct {
 			PackageName string
 			TypeName    string
+			RawTypeName string
 			Fields      []field
 		}{
 			PackageName: g.pkg,
 			TypeName:    name,
+			RawTypeName: datatype,
 			Fields:      fields,
 		}
 
