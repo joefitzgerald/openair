@@ -145,7 +145,7 @@ func (o *{{cleannamelower .TypeName}}) list(ctx context.Context, limit int, offs
 	filterBody := ""
 
 	if modifiedSince != nil {
-		filterAttributes = "filter=\"newer-than\" field=\"date\""
+		filterAttributes = "filter=\"newer-than\" field=\"updated\""
 		filterBody = fmt.Sprintf({{backtick}}<Date>
 			<year>%d</year>
 			<month>%d</month>
