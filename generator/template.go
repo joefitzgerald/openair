@@ -138,11 +138,16 @@ type {{cleannamelower .TypeName}} struct {
 	config *Config
 }
 
-func (o *{{cleannamelower .TypeName}}) list(ctx context.Context, limit int, offset int, modifiedSince *time.Time) ([]{{cleanname .TypeName}}, error) {
+func (o *{{cleannamelower .TypeName}}) list(ctx context.Context, limit int, offset int, modifiedSince *time.Time, limitDeleted bool) ([]{{cleanname .TypeName}}, error) {
 	url := fmt.Sprintf("%s://%s/api.pl", o.config.Scheme, o.config.Domain)
 
 	filterAttributes := ""
 	filterBody := ""
+
+	nonDeleted, deleted := 1, 0
+	if limitDeleted {
+		nonDeleted, deleted = deleted, nonDeleted
+	}
 
 	if modifiedSince != nil {
 		filterAttributes = "filter=\"newer-than\" field=\"updated\""
@@ -162,10 +167,10 @@ func (o *{{cleannamelower .TypeName}}) list(ctx context.Context, limit int, offs
 					<password>%s</password>
 				</Login>
 			</Auth>
-			<Read type="{{.TypeName}}" method="all" limit="%d,%d" enable_custom="1" include_nondeleted="1" deleted="1" %s>%s</Read>
+			<Read type="{{.TypeName}}" method="all" limit="%d,%d" enable_custom="1" include_nondeleted="%v" deleted="%v" %s>%s</Read>
 		</request>{{backtick}}
 
-	payload := strings.NewReader(fmt.Sprintf(tmpl, o.config.Namespace, o.config.Key, o.config.Company, o.config.User, o.config.Password, offset, limit, filterAttributes, filterBody))
+	payload := strings.NewReader(fmt.Sprintf(tmpl, o.config.Namespace, o.config.Key, o.config.Company, o.config.User, o.config.Password, offset, limit, nonDeleted, deleted, filterAttributes, filterBody))
 
 	req, err := http.NewRequest(http.MethodPost, url, payload)
 	if err != nil {
@@ -185,13 +190,20 @@ func (o *{{cleannamelower .TypeName}}) list(ctx context.Context, limit int, offs
 	if r.Auth.Status != "0" {
 		return nil, errors.New("unauthorized")
 	}
+
+	if limitDeleted {
+		for i := range r.Read.{{cleanname .TypeName}}s {
+			r.Read.{{cleanname .TypeName}}s[i].Deleted = "1"
+		}
+	}
+
 	return r.Read.{{cleanname .TypeName}}s, nil
 }
 
-func (o *{{cleannamelower .TypeName}}) listWithRetry(ctx context.Context, limit int, offset int, modifiedSince *time.Time) ([]{{cleanname .TypeName}}, error) {
+func (o *{{cleannamelower .TypeName}}) listWithRetry(ctx context.Context, limit int, offset int, modifiedSince *time.Time, limitDeleted bool) ([]{{cleanname .TypeName}}, error) {
 	wait := time.Duration(o.config.RetryDelay) * time.Millisecond
 	attempt := 1
-	batch, err := o.list(ctx, limit, offset, modifiedSince)
+	batch, err := o.list(ctx, limit, offset, modifiedSince, limitDeleted)
 	if err != nil && err.Error() == "unauthorized" {
 		return nil, err
 	}
@@ -202,7 +214,7 @@ func (o *{{cleannamelower .TypeName}}) listWithRetry(ctx context.Context, limit 
 		time.Sleep(wait)
 		wait *= 2
 		attempt += 1
-		batch, err = o.list(ctx, limit, offset, modifiedSince)
+		batch, err = o.list(ctx, limit, offset, modifiedSince, limitDeleted)
 	}
 	return batch, nil
 }
@@ -216,7 +228,20 @@ func (o *{{cleannamelower .TypeName}}) ListAsync(ctx context.Context, modifiedSi
 	go func() {
 		offset := 0
 		for {
-			batch, err := o.listWithRetry(ctx, limit, offset, modifiedSince)
+			batch, err := o.listWithRetry(ctx, limit, offset, modifiedSince, false)
+			if err != nil {
+				errs <- err
+				break
+			}
+			result <- batch
+			if len(batch) < limit {
+				break
+			}
+			offset += limit
+		}
+		offset = 0
+		for {
+			batch, err := o.listWithRetry(ctx, limit, offset, modifiedSince, true)
 			if err != nil {
 				errs <- err
 				break
