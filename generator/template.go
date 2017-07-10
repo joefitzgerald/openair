@@ -226,31 +226,35 @@ func (o *{{cleannamelower .TypeName}}) ListAsync(ctx context.Context, modifiedSi
 	limit := 1000
 
 	go func() {
+		var err error
+		var batch []Customer
 		offset := 0
 		for {
-			batch, err := o.listWithRetry(ctx, limit, offset, modifiedSince, false)
+			batch, err = o.listWithRetry(ctx, limit, offset, modifiedSince, false)
+			result <- batch
 			if err != nil {
 				errs <- err
 				break
 			}
-			result <- batch
 			if len(batch) < limit {
 				break
 			}
 			offset += limit
 		}
-		offset = 0
-		for {
-			batch, err := o.listWithRetry(ctx, limit, offset, modifiedSince, true)
-			if err != nil {
-				errs <- err
-				break
+		if err == nil {
+			offset = 0
+			for {
+				batch, err = o.listWithRetry(ctx, limit, offset, modifiedSince, true)
+				result <- batch
+				if err != nil {
+					errs <- err
+					break
+				}
+				if len(batch) < limit {
+					break
+				}
+				offset += limit
 			}
-			result <- batch
-			if len(batch) < limit {
-				break
-			}
-			offset += limit
 		}
 		close(result)
 		close(errs)
