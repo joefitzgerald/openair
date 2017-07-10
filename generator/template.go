@@ -144,9 +144,9 @@ func (o *{{cleannamelower .TypeName}}) list(ctx context.Context, limit int, offs
 	filterAttributes := ""
 	filterBody := ""
 
-	nonDeleted, deleted := 1, 0
+	nonDeletedFlag, deletedFlag := 1, 0
 	if deleted {
-		nonDeleted, deleted = deleted, nonDeleted
+		nonDeletedFlag, deletedFlag = deletedFlag, nonDeletedFlag
 	}
 
 	if modifiedSince != nil {
@@ -170,7 +170,7 @@ func (o *{{cleannamelower .TypeName}}) list(ctx context.Context, limit int, offs
 			<Read type="{{.RawTypeName}}" method="all" limit="%d,%d" enable_custom="1" include_nondeleted="%d" deleted="%d" %s>%s</Read>
 		</request>{{backtick}}
 
-	payload := strings.NewReader(fmt.Sprintf(tmpl, o.config.Namespace, o.config.Key, o.config.Company, o.config.User, o.config.Password, offset, limit, nonDeleted, deleted, filterAttributes, filterBody))
+	payload := strings.NewReader(fmt.Sprintf(tmpl, o.config.Namespace, o.config.Key, o.config.Company, o.config.User, o.config.Password, offset, limit, nonDeletedFlag, deletedFlag, filterAttributes, filterBody))
 
 	req, err := http.NewRequest(http.MethodPost, url, payload)
 	if err != nil {
@@ -227,7 +227,7 @@ func (o *{{cleannamelower .TypeName}}) ListAsync(ctx context.Context, modifiedSi
 
 	go func() {
 		var err error
-		var batch []Customer
+		var batch []{{cleanname .TypeName}}
 		offset := 0
 		for {
 			batch, err = o.listWithRetry(ctx, limit, offset, modifiedSince, false)
