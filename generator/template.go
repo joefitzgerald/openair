@@ -167,7 +167,7 @@ func (o *{{cleannamelower .TypeName}}) list(ctx context.Context, limit int, offs
 					<password>%s</password>
 				</Login>
 			</Auth>
-			<Read type="{{.TypeName}}" method="all" limit="%d,%d" enable_custom="1" include_nondeleted="%d" deleted="%d" %s>%s</Read>
+			<Read type="{{.RawTypeName}}" method="all" limit="%d,%d" enable_custom="1" include_nondeleted="%d" deleted="%d" %s>%s</Read>
 		</request>{{backtick}}
 
 	payload := strings.NewReader(fmt.Sprintf(tmpl, o.config.Namespace, o.config.Key, o.config.Company, o.config.User, o.config.Password, offset, limit, nonDeleted, deleted, filterAttributes, filterBody))
