@@ -25,6 +25,8 @@ import (
 // Date is a date
 const Date string = "Date"
 
+const deleted string = "deleted"
+
 // Address is an address
 const Address string = "Address"
 
@@ -118,6 +120,7 @@ func buildFields(obj string) []field {
 	if err != nil {
 		log.Fatal(err)
 	}
+	hasDeleted := false
 	for _, e := range r.Read.Entity.Element {
 		clean := cleanname(e.XMLName.Local)
 		t := "string"
@@ -127,7 +130,14 @@ func buildFields(obj string) []field {
 		if len(e.Element) > 0 && e.Element[0].XMLName.Local == Address {
 			t = Address
 		}
+		if strings.ToLower(clean) == deleted {
+			hasDeleted = true
+		}
 		fields = append(fields, field{FieldName: clean, RawName: e.XMLName.Local, FieldType: t})
+	}
+
+	if !hasDeleted {
+		fields = append(fields, field{FieldName: "deleted", RawName: "deleted", FieldType: "string"})
 	}
 
 	for _, f := range fields {
