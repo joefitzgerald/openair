@@ -138,14 +138,14 @@ type {{cleannamelower .TypeName}} struct {
 	config *Config
 }
 
-func (o *{{cleannamelower .TypeName}}) list(ctx context.Context, limit int, offset int, modifiedSince *time.Time, limitDeleted bool) ([]{{cleanname .TypeName}}, error) {
+func (o *{{cleannamelower .TypeName}}) list(ctx context.Context, limit int, offset int, modifiedSince *time.Time, deleted bool) ([]{{cleanname .TypeName}}, error) {
 	url := fmt.Sprintf("%s://%s/api.pl", o.config.Scheme, o.config.Domain)
 
 	filterAttributes := ""
 	filterBody := ""
 
 	nonDeleted, deleted := 1, 0
-	if limitDeleted {
+	if deleted {
 		nonDeleted, deleted = deleted, nonDeleted
 	}
 
@@ -191,7 +191,7 @@ func (o *{{cleannamelower .TypeName}}) list(ctx context.Context, limit int, offs
 		return nil, errors.New("unauthorized")
 	}
 
-	if limitDeleted {
+	if deleted {
 		for i := range r.Read.{{cleanname .TypeName}}s {
 			r.Read.{{cleanname .TypeName}}s[i].Deleted = "1"
 		}
@@ -200,10 +200,10 @@ func (o *{{cleannamelower .TypeName}}) list(ctx context.Context, limit int, offs
 	return r.Read.{{cleanname .TypeName}}s, nil
 }
 
-func (o *{{cleannamelower .TypeName}}) listWithRetry(ctx context.Context, limit int, offset int, modifiedSince *time.Time, limitDeleted bool) ([]{{cleanname .TypeName}}, error) {
+func (o *{{cleannamelower .TypeName}}) listWithRetry(ctx context.Context, limit int, offset int, modifiedSince *time.Time, deleted bool) ([]{{cleanname .TypeName}}, error) {
 	wait := time.Duration(o.config.RetryDelay) * time.Millisecond
 	attempt := 1
-	batch, err := o.list(ctx, limit, offset, modifiedSince, limitDeleted)
+	batch, err := o.list(ctx, limit, offset, modifiedSince, deleted)
 	if err != nil && err.Error() == "unauthorized" {
 		return nil, err
 	}
@@ -214,7 +214,7 @@ func (o *{{cleannamelower .TypeName}}) listWithRetry(ctx context.Context, limit 
 		time.Sleep(wait)
 		wait *= 2
 		attempt += 1
-		batch, err = o.list(ctx, limit, offset, modifiedSince, limitDeleted)
+		batch, err = o.list(ctx, limit, offset, modifiedSince, deleted)
 	}
 	return batch, nil
 }
